@@ -17,20 +17,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscurePassword = true;
   bool _isLoading = false;
 
-  void _registerProcess() async {
-    setState(() { _isLoading = true; });
-
-    // Simulasi proses penyimpanan data ke server
-    await Future.delayed(const Duration(seconds: 2));
-
-    if (!mounted) return;
-    setState(() { _isLoading = false; });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Registrasi Berhasil! Silakan Login.'), backgroundColor: Colors.green)
-    );
-    Navigator.pop(context); // Kembali ke halaman login
-  }
   @override
   void dispose() {
     _nameController.dispose();
@@ -39,15 +25,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  void _processRegistration() {
-    // Mengecek apakah semua input sudah sesuai dengan aturan validator
+  void _registerProcess() async {
+    // 1. Cek validasi form terlebih dahulu sebelum menjalankan loading
     if (_formKey.currentState!.validate()) {
-      // Jika lolos validasi, proses pendaftaran dijalankan
+
+      // 2. Jika semua input valid, mulai proses loading
+      setState(() { _isLoading = true; });
+
+      // Simulasi proses penyimpanan data ke server
+      await Future.delayed(const Duration(seconds: 2));
+
+      if (!mounted) return;
+      setState(() { _isLoading = false; });
+
+      // 3. Tampilkan pesan sukses dan pindah halaman
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Registrasi Berhasil! Silakan Login.'),
-          backgroundColor: Colors.green,
-        ),
+          const SnackBar(content: Text('Registrasi Berhasil! Silakan Login.'), backgroundColor: Colors.green)
       );
       Navigator.pop(context); // Kembali ke halaman login
     }
@@ -157,7 +150,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     elevation: 0,
                   ),
-                  onPressed: _isLoading ? null : _registerProcess, // Cegah klik ganda
+                  onPressed: _isLoading ? null : _registerProcess,
                   child: _isLoading
                       ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                       : const Text('Daftar Sekarang', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),

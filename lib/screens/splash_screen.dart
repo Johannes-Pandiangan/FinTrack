@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'login_screen.dart';
-import '../widgets/fintrack_logo.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({Key? key}) : super(key: key);
@@ -46,7 +45,13 @@ class _SplashScreenState extends State<SplashScreen> {
                   BoxShadow(color: Colors.grey.withOpacity(0.2), blurRadius: 15, offset: const Offset(0, 5))
                 ],
               ),
-              child: const Icon(Icons.analytics_outlined, size: 50, color: Color(0xFF0C5A3E)),
+              // Memanggil gambar logo dari aset untuk Splash Screen
+              child: Image.asset(
+                'assets/images/app_icon.jpg',
+                width: 80, // Dibuat lebih besar agar terlihat jelas di tengah layar
+                height: 80,
+                fit: BoxFit.contain,
+              ),
             ),
             const SizedBox(height: 20),
             RichText(
