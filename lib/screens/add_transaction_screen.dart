@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/transaction.dart';
 import '../data/dummy_data.dart';
 
 class AddTransactionScreen extends StatefulWidget {
-  const AddTransactionScreen({Key? key}) : super(key: key);
+  // Parameter ini menentukan apakah layar ini untuk Tambah (null) atau Edit (ada data)
+  final TransactionRecord? transactionToEdit;
+
+  const AddTransactionScreen({Key? key, this.transactionToEdit}) : super(key: key);
 
   @override
   State<AddTransactionScreen> createState() => _AddTransactionScreenState();
@@ -15,7 +19,20 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   final TextEditingController _descController = TextEditingController();
 
   String _selectedType = 'Pengeluaran';
-  String? _selectedCategoryId;
+  String? _selectedCategory;
+  bool _isSubmitting = false; // State untuk simulasi loading
+
+  @override
+  void initState() {
+    super.initState();
+    // Jika ada data yang dilempar (Mode Edit), isi otomatis semua kolom input
+    if (widget.transactionToEdit != null) {
+      _amountController.text = widget.transactionToEdit!.amount.toInt().toString();
+      _descController.text = widget.transactionToEdit!.description;
+      _selectedType = widget.transactionToEdit!.type;
+      _selectedCategory = widget.transactionToEdit!.categoryId;
+    }
+  }
 
   @override
   void dispose() {
@@ -24,38 +41,61 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     super.dispose();
   }
 
-  void _saveTransaction() {
-    if (_formKey.currentState!.validate() && _selectedCategoryId != null) {
-      // 1. Ambil nilai input
-      final double amount = double.parse(_amountController.text);
-      final String desc = _descController.text;
+  void _submitForm() async {
+    // Validasi form agar input tidak boleh kosong dan sesuai format
+    if (_formKey.currentState!.validate()) {
+      setState(() { _isSubmitting = true; }); // Memulai indikator loading
 
-      // 2. Buat objek transaksi baru
-      final newTransaction = TransactionRecord(
-        id: DateTime.now().millisecondsSinceEpoch.toString(), // ID unik acak
-        categoryId: _selectedCategoryId!,
-        description: desc,
-        amount: amount,
-        date: DateTime.now(),
-        type: _selectedType,
-      );
+      // Simulasi jeda pemuatan data ke server (2 detik)
+      await Future.delayed(const Duration(seconds: 2));
 
-      // 3. Masukkan ke urutan paling atas di list dummy
-      dummyTransactions.insert(0, newTransaction);
+      if (!mounted) return;
 
-      // 4. Tutup halaman dan kirim sinyal berhasil (true)
-      Navigator.pop(context, true);
-    } else if (_selectedCategoryId == null) {
+      double amount = double.parse(_amountController.text);
+
+      if (widget.transactionToEdit == null) {
+        // PROSES CREATE (Tambah Baru)
+        final newTx = TransactionRecord(
+          id: 'tx_${DateTime.now().millisecondsSinceEpoch}',
+          type: _selectedType,
+          amount: amount,
+          categoryId: _selectedCategory ?? dummyCategories.first.id,
+          description: _descController.text,
+          date: DateTime.now(),
+        );
+        dummyTransactions.add(newTx);
+      } else {
+        // PROSES UPDATE (Edit Data Lama)
+        int index = dummyTransactions.indexWhere((t) => t.id == widget.transactionToEdit!.id);
+        if (index != -1) {
+          // Ganti seluruh objek lama dengan objek baru yang berisi data hasil editan
+          dummyTransactions[index] = TransactionRecord(
+            id: widget.transactionToEdit!.id, // Pertahankan ID asli
+            type: _selectedType,
+            amount: amount,
+            categoryId: _selectedCategory ?? widget.transactionToEdit!.categoryId,
+            description: _descController.text,
+            date: widget.transactionToEdit!.date, // Pertahankan tanggal asli
+          );
+        }
+      }
+
+      // Pesan sukses
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pilih kategori terlebih dahulu!'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text(widget.transactionToEdit == null ? 'Transaksi berhasil ditambahkan!' : 'Transaksi berhasil diperbarui!'),
+          backgroundColor: Colors.green,
+        ),
       );
+
+      // Kembali ke halaman sebelumnya dan mengirim sinyal untuk refresh UI
+      Navigator.pop(context, true);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Memfilter daftar kategori yang muncul di dropdown berdasarkan tipe yang dipilih
-    final availableCategories = dummyCategories.where((c) => c.type == _selectedType).toList();
+    bool isEditMode = widget.transactionToEdit != null;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
@@ -63,10 +103,10 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.close, color: Colors.black87),
+          icon: const Icon(Icons.arrow_back, color: Colors.black87),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Catat Transaksi', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
+        title: Text(isEditMode ? 'Edit Transaksi' : 'Tambah Transaksi', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -76,77 +116,93 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. Pemilih Tipe Transaksi (Tombol Toggle)
+              // 1. Jenis Input: Segmented Button (Tipe Transaksi)
+              const Text('Jenis Transaksi', style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF344054))),
+              const SizedBox(height: 8),
               Row(
                 children: [
-                  Expanded(child: _buildTypeButton('Pengeluaran', Icons.arrow_upward, Colors.red)),
-                  const SizedBox(width: 16),
-                  Expanded(child: _buildTypeButton('Pemasukan', Icons.arrow_downward, Colors.green)),
+                  Expanded(
+                    child: RadioListTile<String>(
+                      title: const Text('Pengeluaran', style: TextStyle(fontSize: 14)),
+                      value: 'Pengeluaran',
+                      groupValue: _selectedType,
+                      activeColor: Colors.red,
+                      onChanged: (value) => setState(() => _selectedType = value!),
+                    ),
+                  ),
+                  Expanded(
+                    child: RadioListTile<String>(
+                      title: const Text('Pemasukan', style: TextStyle(fontSize: 14)),
+                      value: 'Pemasukan',
+                      groupValue: _selectedType,
+                      activeColor: Colors.green,
+                      onChanged: (value) => setState(() => _selectedType = value!),
+                    ),
+                  ),
                 ],
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 20),
 
-              // 2. Input Nominal
+              // 2. Jenis Input: Teks Numerik (Nominal)
               const Text('Nominal (Rp)', style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF344054))),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _amountController,
                 keyboardType: TextInputType.number,
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly], // Cegah input selain angka
                 decoration: InputDecoration(
-                  prefixText: 'Rp ',
-                  prefixStyle: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87),
+                  hintText: '0',
                   filled: true,
                   fillColor: Colors.white,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) return 'Nominal tidak boleh kosong';
-                  if (double.tryParse(value) == null) return 'Masukkan angka yang valid';
+                  if (double.tryParse(value) == null || double.parse(value) <= 0) return 'Masukkan nominal yang valid';
                   return null;
                 },
               ),
               const SizedBox(height: 20),
 
-              // 3. Dropdown Kategori
+              // 3. Jenis Input: Dropdown (Kategori)
               const Text('Kategori', style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF344054))),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
-                value: _selectedCategoryId,
+                value: _selectedCategory,
                 hint: const Text('Pilih Kategori'),
                 decoration: InputDecoration(
                   filled: true,
                   fillColor: Colors.white,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
                 ),
-                items: availableCategories.map((category) {
-                  return DropdownMenuItem(value: category.id, child: Text(category.name));
+                items: dummyCategories.map((c) {
+                  return DropdownMenuItem(value: c.id, child: Text(c.name));
                 }).toList(),
-                onChanged: (value) {
-                  setState(() { _selectedCategoryId = value; });
-                },
+                onChanged: (value) => setState(() => _selectedCategory = value),
+                validator: (value) => value == null ? 'Pilih kategori terlebih dahulu' : null,
               ),
               const SizedBox(height: 20),
 
-              // 4. Input Catatan
-              const Text('Catatan Tambahan', style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF344054))),
+              // 4. Jenis Input: Teks Panjang (Deskripsi)
+              const Text('Deskripsi / Catatan', style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF344054))),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _descController,
+                maxLines: 3,
                 decoration: InputDecoration(
-                  hintText: 'Misal: Beli makan siang',
+                  hintText: 'Tulis catatan transaksi (cth: Makan siang)',
                   filled: true,
                   fillColor: Colors.white,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
                 ),
                 validator: (value) {
-                  if (value == null || value.isEmpty) return 'Catatan tidak boleh kosong';
+                  if (value == null || value.isEmpty) return 'Deskripsi tidak boleh kosong';
                   return null;
                 },
               ),
               const SizedBox(height: 40),
 
-              // 5. Tombol Simpan
+              // Tombol Submit dengan Simulasi Loading
               SizedBox(
                 width: double.infinity,
                 height: 55,
@@ -155,40 +211,14 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                     backgroundColor: const Color(0xFF0C5A3E),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  onPressed: _saveTransaction,
-                  child: const Text('Simpan Transaksi', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                  onPressed: _isSubmitting ? null : _submitForm, // Nonaktifkan submit saat loading berjalan
+                  child: _isSubmitting
+                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : Text(isEditMode ? 'Simpan Perubahan' : 'Tambah Transaksi', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
                 ),
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTypeButton(String title, IconData icon, Color color) {
-    bool isSelected = _selectedType == title;
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedType = title;
-          _selectedCategoryId = null; // Reset kategori saat tipe berubah
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: isSelected ? color.withOpacity(0.1) : Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: isSelected ? color : Colors.grey.shade300, width: isSelected ? 2 : 1),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: isSelected ? color : Colors.grey, size: 20),
-            const SizedBox(width: 8),
-            Text(title, style: TextStyle(color: isSelected ? color : Colors.grey, fontWeight: FontWeight.bold)),
-          ],
         ),
       ),
     );

@@ -15,7 +15,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _passwordController = TextEditingController();
 
   bool _obscurePassword = true;
+  bool _isLoading = false;
 
+  void _registerProcess() async {
+    setState(() { _isLoading = true; });
+
+    // Simulasi proses penyimpanan data ke server
+    await Future.delayed(const Duration(seconds: 2));
+
+    if (!mounted) return;
+    setState(() { _isLoading = false; });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Registrasi Berhasil! Silakan Login.'), backgroundColor: Colors.green)
+    );
+    Navigator.pop(context); // Kembali ke halaman login
+  }
   @override
   void dispose() {
     _nameController.dispose();
@@ -142,8 +157,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     elevation: 0,
                   ),
-                  onPressed: _processRegistration, // Panggil fungsi validasi
-                  child: const Text('Daftar Sekarang', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                  onPressed: _isLoading ? null : _registerProcess, // Cegah klik ganda
+                  child: _isLoading
+                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : const Text('Daftar Sekarang', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
                 ),
               ),
               const SizedBox(height: 24),

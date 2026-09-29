@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../data/dummy_data.dart';
 import '../models/transaction.dart';
+import 'add_transaction_screen.dart';
 
 class RiwayatScreen extends StatefulWidget {
   const RiwayatScreen({Key? key}) : super(key: key);
@@ -11,6 +12,23 @@ class RiwayatScreen extends StatefulWidget {
 
 class _RiwayatScreenState extends State<RiwayatScreen> {
   String _activeFilter = 'Semua';
+  bool _isLoading = true; // State untuk simulasi loading pemuatan data awal
+
+  @override
+  void initState() {
+    super.initState();
+    _simulateLoadingData();
+  }
+
+  // Menyimulasikan jeda pemuatan dari server
+  void _simulateLoadingData() async {
+    await Future.delayed(const Duration(seconds: 1));
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
 
   String formatRp(double amount) {
     String str = amount.toInt().toString();
@@ -24,23 +42,69 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     return res;
   }
 
+  // Fungsi DELETE: Menampilkan dialog konfirmasi destruktif
+  void _showDeleteConfirmation(TransactionRecord transaction) {
+    showDialog(
+      context: context,
+      builder: (BuildContext ctx) {
+        return AlertDialog(
+          title: const Text('Hapus Transaksi', style: TextStyle(fontWeight: FontWeight.bold)),
+          content: Text('Apakah Anda yakin ingin menghapus transaksi "${transaction.description}" senilai Rp${formatRp(transaction.amount)}?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Batal', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () {
+                // Proses Hapus Data dari Dummy List
+                setState(() {
+                  dummyTransactions.removeWhere((t) => t.id == transaction.id);
+                });
+                Navigator.pop(ctx);
+
+                // Pesan Sukses Aksi Selesai
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Transaksi berhasil dihapus'), backgroundColor: Colors.green),
+                );
+              },
+              child: const Text('Hapus', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _navigateToEditScreen(TransactionRecord transaction) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => AddTransactionScreen(transactionToEdit: transaction)),
+    );
+
+    // Refresh UI jika ada perubahan data dari layar edit
+    if (result == true) {
+      setState(() {});
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Kalkulasi Ringkasan Pengeluaran Bulan Ini
     double totalPengeluaranBulanIni = 0;
     for (var t in dummyTransactions) {
       if (t.type == 'Pengeluaran') totalPengeluaranBulanIni += t.amount;
     }
-
-    // Asumsi: Menghitung rata-rata harian berdasarkan tanggal hari ini
     int hariBerjalan = DateTime.now().day;
     double rataRataHarian = totalPengeluaranBulanIni / (hariBerjalan > 0 ? hariBerjalan : 1);
 
-    // Filter Transaksi
     List<TransactionRecord> filteredTransactions = dummyTransactions.where((t) {
       if (_activeFilter == 'Semua') return true;
       return t.type == _activeFilter;
     }).toList();
+
+    // Urutkan dari terbaru
+    filteredTransactions.sort((a, b) => b.date.compareTo(a.date));
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
@@ -50,11 +114,12 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
         elevation: 0,
         title: const Text('Riwayat Transaksi', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
       ),
-      body: Padding(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF0C5A3E))) // Indikator Loading
+          : Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
         child: Column(
           children: [
-            // PILIHAN FILTER (Pill Buttons)
             Row(
               children: [
                 _buildPillButton('Semua'),
@@ -66,7 +131,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
             ),
             const SizedBox(height: 20),
 
-            // KARTU RINGKASAN BULAN INI
+            // KARTU RINGKASAN
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -118,9 +183,22 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
             ),
             const SizedBox(height: 20),
 
-            // DAFTAR TRANSAKSI DENGAN TOMBOL AKSI
+            // DAFTAR TRANSAKSI DENGAN EMPTY STATE
             Expanded(
-              child: ListView.builder(
+              child: filteredTransactions.isEmpty
+                  ? Center( // Skenario daftar kosong dengan petunjuk tindakan
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.receipt_long_outlined, size: 64, color: Colors.grey.shade400),
+                    const SizedBox(height: 16),
+                    Text('Belum ada riwayat $_activeFilter', style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    const Text('Mulai catat keuangan Anda dengan menekan tombol + di bawah.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey, fontSize: 12)),
+                  ],
+                ),
+              )
+                  : ListView.builder(
                 physics: const BouncingScrollPhysics(),
                 itemCount: filteredTransactions.length,
                 itemBuilder: (context, index) {
@@ -151,7 +229,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                             ],
                           ),
                         ),
-                        // Nominal dan Tombol Aksi
+                        // Nominal dan Tombol Aksi (Edit & Hapus)
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
@@ -160,12 +238,12 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                             Row(
                               children: [
                                 GestureDetector(
-                                  onTap: () { /* Aksi Edit */ },
+                                  onTap: () => _navigateToEditScreen(t),
                                   child: const Icon(Icons.edit_outlined, size: 18, color: Colors.blueGrey),
                                 ),
                                 const SizedBox(width: 12),
                                 GestureDetector(
-                                  onTap: () { /* Aksi Hapus */ },
+                                  onTap: () => _showDeleteConfirmation(t),
                                   child: const Icon(Icons.delete_outline, size: 18, color: Colors.redAccent),
                                 ),
                               ],
@@ -184,7 +262,6 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     );
   }
 
-  // Komponen Pill Button
   Widget _buildPillButton(String label) {
     bool isActive = _activeFilter == label;
     return GestureDetector(

@@ -24,7 +24,17 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _loginProcess() {
+  bool _isLoading = false;
+
+  void _loginProcess() async {
+    setState(() { _isLoading = true; }); // Tampilkan loading
+
+    // Simulasi loading dari server selama 2 detik
+    await Future.delayed(const Duration(seconds: 2));
+
+    if (!mounted) return;
+    setState(() { _isLoading = false; }); // Hentikan loading
+
     String email = _emailController.text;
     String password = _passwordController.text;
 
@@ -34,7 +44,6 @@ class _LoginScreenState extends State<LoginScreen> {
         MaterialPageRoute(builder: (context) => const MainNavigation()),
       );
     } else {
-      // Menampilkan popup error dari bawah
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Email atau sandi anda salah'),
@@ -160,8 +169,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   elevation: 0,
                 ),
-                onPressed: _loginProcess, // Memanggil fungsi validasi
-                child: const Text('Masuk', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                onPressed: _isLoading ? null : _loginProcess, // Cegah klik saat loading
+                child: _isLoading
+                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : const Text('Masuk', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
               ),
             ),
             const SizedBox(height: 24),
