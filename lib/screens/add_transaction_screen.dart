@@ -117,13 +117,13 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // 1. Jenis Input: Segmented Button (Tipe Transaksi)
-              const Text('Jenis Transaksi', style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF344054))),
+              const Text('Jenis Transaksi', style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF344054))),
               const SizedBox(height: 8),
               Row(
                 children: [
                   Expanded(
                     child: RadioListTile<String>(
-                      title: const Text('Pengeluaran', style: TextStyle(fontSize: 14)),
+                      title: const Text('Pengeluaran', style: TextStyle(fontSize: 11)),
                       value: 'Pengeluaran',
                       groupValue: _selectedType,
                       activeColor: Colors.red,
@@ -132,7 +132,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                   ),
                   Expanded(
                     child: RadioListTile<String>(
-                      title: const Text('Pemasukan', style: TextStyle(fontSize: 14)),
+                      title: const Text('Pemasukan', style: TextStyle(fontSize: 12)),
                       value: 'Pemasukan',
                       groupValue: _selectedType,
                       activeColor: Colors.green,

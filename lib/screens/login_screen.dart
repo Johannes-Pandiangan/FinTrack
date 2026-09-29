@@ -65,7 +65,13 @@ class _LoginScreenState extends State<LoginScreen> {
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.analytics_outlined, color: Color(0xFF0C5A3E), size: 24),
+            // Memanggil gambar logo dari aset
+            Image.asset(
+              'assets/images/app_icon.jpg',
+              width: 32, // Ukuran disesuaikan agar pas di AppBar
+              height: 32,
+              fit: BoxFit.contain,
+            ),
             const SizedBox(width: 8),
             RichText(
               text: const TextSpan(
@@ -149,7 +155,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
 
-            // Jarak yang tadinya untuk Checkbox diganti dengan jarak kosong
             const SizedBox(height: 16),
             Align(
               alignment: Alignment.centerRight,
@@ -169,7 +174,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   elevation: 0,
                 ),
-                onPressed: _isLoading ? null : _loginProcess, // Cegah klik saat loading
+                onPressed: _isLoading ? null : _loginProcess,
                 child: _isLoading
                     ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                     : const Text('Masuk', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
