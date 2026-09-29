@@ -2,11 +2,92 @@ import 'package:flutter/material.dart';
 import 'login_screen.dart';
 import '../data/dummy_data.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
 
   @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  bool _isLoading = false;
+
+  void _logoutProcess() async {
+    setState(() { _isLoading = true; });
+
+    // Simulasi proses menghapus sesi dari server lokal
+    await Future.delayed(const Duration(seconds: 2));
+
+    if (!mounted) return;
+
+    // Gunakan pushAndRemoveUntil agar pengguna tidak bisa kembali ke halaman profil setelah logout
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => const LoginScreen()),
+          (Route<dynamic> route) => false,
+    );
+  }
+
+  // Fungsi untuk memunculkan dialog konfirmasi
+  void _showLogoutConfirmation() {
+    showDialog(
+      context: context,
+      builder: (BuildContext ctx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Konfirmasi Keluar', style: TextStyle(fontWeight: FontWeight.bold)),
+          content: const Text('Apakah Anda yakin ingin keluar dari akun ini?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx), // Menutup dialog jika batal
+              child: const Text('Batal', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                elevation: 0,
+              ),
+              onPressed: () {
+                Navigator.pop(ctx); // Tutup dialog terlebih dahulu
+                _logoutProcess();   // Kemudian jalankan proses loading dan logout
+              },
+              child: const Text('Keluar', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Komponen pembuat list menu yang dapat digunakan berulang
+  Widget _buildMenuOption(IconData icon, String title, {required VoidCallback onTap}) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: ListTile(
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF4F7F6),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: const Color(0xFF0C5A3E)),
+        ),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF344054))),
+        trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+        onTap: onTap,
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Mengambil jumlah transaksi secara dinamis dari data simulasi
     final int totalCatatan = dummyTransactions.length;
 
     return Scaffold(
@@ -32,7 +113,7 @@ class ProfileScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: const Color(0xFFD1FADF), // Hijau muda
+                color: const Color(0xFFD1FADF),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Row(
@@ -53,7 +134,7 @@ class ProfileScreen extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 20),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF0F4F8), // Biru-abu terang
+                      color: const Color(0xFFF0F4F8),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Column(
@@ -107,14 +188,10 @@ class ProfileScreen extends StatelessWidget {
                   side: const BorderSide(color: Colors.red, width: 1.5),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                onPressed: () {
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (context) => const LoginScreen()),
-                        (Route<dynamic> route) => false,
-                  );
-                },
-                child: const Row(
+                onPressed: _isLoading ? null : _showLogoutConfirmation, // Memanggil dialog
+                child: _isLoading
+                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.red, strokeWidth: 2))
+                    : const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(Icons.logout),
@@ -126,30 +203,6 @@ class ProfileScreen extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildMenuOption(IconData icon, String title, {required VoidCallback onTap}) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: ListTile(
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF4F7F6),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, color: const Color(0xFF0C5A3E)),
-        ),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF344054))),
-        trailing: const Icon(Icons.chevron_right, color: Colors.grey),
-        onTap: onTap,
       ),
     );
   }
