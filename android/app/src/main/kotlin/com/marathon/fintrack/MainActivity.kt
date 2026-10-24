@@ -1,4 +1,4 @@
-package com.example.fintrack
+package com.marathon.fintrack
 
 import io.flutter.embedding.android.FlutterActivity
 
