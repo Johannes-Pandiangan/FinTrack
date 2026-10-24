@@ -1,24 +1,14 @@
 import 'package:flutter/material.dart';
-import 'screens/splash_screen.dart'; // Import halaman splash
 
+// SEMENTARA: file ini hanya penampung sampai langkah 15
+// (rute & aplikasi utama) menimpanya dengan main.dart yang sebenarnya.
 void main() {
-  runApp(const FinTrackApp());
-}
-
-class FinTrackApp extends StatelessWidget {
-  const FinTrackApp({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
+  runApp(
+    const MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'FinTrack',
-      theme: ThemeData(
-        primaryColor: const Color(0xFF0C5A3E),
-        scaffoldBackgroundColor: const Color(0xFFF8F9FA),
-        fontFamily: 'Roboto',
+      home: Scaffold(
+        body: Center(child: Text('FinTrack sedang dibangun')),
       ),
-      home: const SplashScreen(),
-    );
-  }
+    ),
+  );
 }
