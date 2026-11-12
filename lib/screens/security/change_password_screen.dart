@@ -74,7 +74,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                       Text('Ubah Kata Sandi', style: AppTextStyles.h1),
                       const SizedBox(height: 6),
                       Text(
-                        'Kata sandi tidak disimpan permanen di prototype ini, jadi perubahan berlaku selama aplikasi berjalan.',
+                        'Masukkan kata sandi saat ini untuk memverifikasi identitas Anda sebelum menyimpan kata sandi baru.',
                         style: AppTextStyles.bodySecondary,
                       ),
                       const SizedBox(height: 20),

@@ -36,6 +36,7 @@ class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
   final _password = TextEditingController();
   final _confirm = TextEditingController();
   bool _verified = false;
+  bool _loading = false;
   String? _error;
 
   @override
@@ -57,6 +58,38 @@ class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
   Future<void> _next() async {
     if (!_formKey.currentState!.validate()) return;
     final state = context.read<AppState>();
+    final navigator = Navigator.of(context);
+
+    // Jika menggunakan Firebase Auth, langsung kirim tautan reset ke email
+    if (state.usesEmailResetLink) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+      bool sent;
+      try {
+        sent = await state.resetPassword(_email.text, '');
+      } catch (_) {
+        if (!mounted) return;
+        setState(() {
+          _loading = false;
+          _error = 'Tidak dapat terhubung ke server. Coba lagi.';
+        });
+        return;
+      }
+      if (!mounted) return;
+      setState(() => _loading = false);
+      if (!sent) {
+        setState(() => _error = 'Gagal mengirim email atur ulang kata sandi.');
+        return;
+      }
+      AppSnackbar.success(
+        context,
+        'Tautan atur ulang kata sandi telah dikirim ke ${_email.text.trim()}.',
+      );
+      navigator.pop();
+      return;
+    }
 
     bool registered;
     try {
@@ -99,6 +132,8 @@ class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final usesEmailLink = context.watch<AppState>().usesEmailResetLink;
+
     return Padding(
       padding: EdgeInsets.only(
         left: 24,
@@ -116,9 +151,11 @@ class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
               Text('Lupa Kata Sandi', style: AppTextStyles.h2),
               const SizedBox(height: 6),
               Text(
-                _verified
-                    ? 'Buat kata sandi baru untuk ${_email.text.trim()}.'
-                    : 'Masukkan email akunmu. Prototype ini belum mengirim email verifikasi, jadi kata sandi dapat langsung diatur ulang untuk akun yang terdaftar di perangkat ini.',
+                usesEmailLink
+                    ? 'Masukkan alamat email akunmu. Kami akan mengirimkan tautan resmi ke email tersebut untuk mengatur ulang kata sandi.'
+                    : (_verified
+                        ? 'Buat kata sandi baru untuk ${_email.text.trim()}.'
+                        : 'Masukkan email akunmu untuk mengatur ulang kata sandi.'),
                 style: AppTextStyles.bodySecondary,
               ),
               const SizedBox(height: 16),
@@ -172,8 +209,11 @@ class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
                 ),
               const SizedBox(height: 20),
               PrimaryButton(
-                label: _verified ? 'Simpan Kata Sandi Baru' : 'Lanjut',
+                label: usesEmailLink
+                    ? 'Kirim Tautan Reset'
+                    : (_verified ? 'Simpan Kata Sandi Baru' : 'Lanjut'),
                 onPressed: _verified ? _reset : _next,
+                isLoading: _loading,
               ),
             ],
           ),

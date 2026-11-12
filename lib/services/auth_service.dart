@@ -2,18 +2,26 @@ import '../data/dummy_data.dart';
 
 /// Akun yang berhasil diautentikasi.
 class AuthAccount {
+  final String? uid;
   final String name;
   final String email;
 
-  const AuthAccount({required this.name, required this.email});
+  const AuthAccount({
+    required this.name,
+    required this.email,
+    this.uid,
+  });
 }
 
 /// Kontrak autentikasi.
 ///
-/// Semua metode async karena implementasi sungguhan akan memanggil backend.
+/// Semua metode async karena implementasi sungguhan memanggil backend/Firebase.
 /// Implementasi boleh melempar exception (mis. tidak ada koneksi); layar
 /// menanganinya dan menampilkan pesan gagal.
 abstract class AuthService {
+  /// true jika pengaturan ulang kata sandi menggunakan tautan email (mis. Firebase Auth).
+  bool get usesEmailResetLink => false;
+
   /// Mengembalikan akun jika email/sandi benar, atau null jika salah.
   Future<AuthAccount?> login(String identifier, String password);
 
@@ -22,7 +30,7 @@ abstract class AuthService {
 
   Future<bool> isEmailRegistered(String email);
 
-  /// false jika akun tidak ditemukan.
+  /// false jika akun tidak ditemukan atau gagal mengirim tautan reset.
   Future<bool> resetPassword(String email, String newPassword);
 
   /// Mengembalikan pesan error, atau null jika berhasil.
@@ -33,6 +41,9 @@ abstract class AuthService {
   );
 
   Future<void> updateName(String email, String name);
+
+  /// Keluar dari sesi backend (opsional untuk implementasi lokal).
+  Future<void> signOut() async {}
 }
 
 class _Account {
@@ -41,9 +52,8 @@ class _Account {
   const _Account(this.name, this.password);
 }
 
-/// Implementasi sementara untuk prototype: akun hidup di memori saja dan
-/// hilang saat aplikasi ditutup. BUKAN autentikasi sungguhan.
-class InMemoryAuthService implements AuthService {
+/// Implementasi lokal (fallback/pengujian unit): akun hidup di memori saja.
+class InMemoryAuthService extends AuthService {
   InMemoryAuthService({
     this.latency = const Duration(milliseconds: 700),
   }) : _accounts = {

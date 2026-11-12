@@ -20,8 +20,8 @@ import '../services/reminder_service.dart';
 ///
 /// Logikanya dipisah ke bagian-bagian yang bisa diganti/diuji sendiri:
 /// - [Ledger]            : dompet, transaksi, aturan saldo
-/// - [FinanceRepository] : penyimpanan transaksi + dompet
-/// - [AuthService]       : login/akun (sementara di memori)
+/// - [FinanceRepository] : penyimpanan transaksi + dompet (Firestore / Lokal)
+/// - [AuthService]       : login/akun (Firebase Auth / In-Memory)
 /// - [PinService]        : kunci PIN
 /// Di sini tersisa sesi pengguna, navigasi, notifikasi, dan pengaturan.
 class AppState extends ChangeNotifier {
@@ -96,6 +96,9 @@ class AppState extends ChangeNotifier {
           'Data tersimpan tidak bisa dibaca, sehingga data awal dipakai. '
           'Salinan data lama disimpan sebagai cadangan.',
         );
+      } else {
+        // Jika pengguna baru belum punya data di Firestore, simpan data awal (seed)
+        unawaited(_finance.save(user.id, snapshot).catchError((Object _) {}));
       }
     } catch (_) {
       addNotification('Data tersimpan gagal dimuat. Data awal dipakai.');
@@ -110,7 +113,7 @@ class AppState extends ChangeNotifier {
     unawaited(
       _finance.save(userId, _ledger.snapshot()).catchError((Object _) {
         addNotification(
-          'Perubahan belum tersimpan di perangkat. Periksa ruang penyimpanan.',
+          'Perubahan belum tersimpan ke cloud/perangkat. Periksa koneksi atau ruang penyimpanan.',
         );
         notifyListeners();
       }),
@@ -121,6 +124,7 @@ class AppState extends ChangeNotifier {
 
   UserModel? get currentUser => _currentUser;
   bool get isLoggedIn => _currentUser != null;
+  bool get usesEmailResetLink => _auth.usesEmailResetLink;
 
   /// true jika berhasil. Melempar exception jika layanan tidak terjangkau.
   Future<bool> login(String identifier, String password) async {
@@ -131,12 +135,12 @@ class AppState extends ChangeNotifier {
     final name = _prefs?.getString('$_kNamePrefix$id') ?? account.name;
     _currentUser = id == DummyData.demoEmail
         ? UserModel(
-            id: DummyData.user.id,
+            id: account.uid ?? DummyData.user.id,
             name: name,
             email: DummyData.user.email,
             phone: DummyData.user.phone,
           )
-        : UserModel(id: 'u_$id', name: name, email: id);
+        : UserModel(id: account.uid ?? 'u_$id', name: name, email: id);
     await _loadLedger(_currentUser!);
     notifyListeners();
     return true;
@@ -188,6 +192,7 @@ class AppState extends ChangeNotifier {
     tabIndex = 0;
     // Data akun ini jangan sampai terlihat oleh akun berikutnya.
     _ledger.replaceAll(const FinanceSnapshot(transactions: [], wallets: []));
+    unawaited(_auth.signOut().catchError((Object _) {}));
     // Batalkan pengingat; dijadwalkan ulang saat login berikutnya.
     unawaited(
       _reminder
